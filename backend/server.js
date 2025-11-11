@@ -132,3 +132,33 @@ app.get('/api/urls/:shortCode', async (req, res) => {
 });
 
 // UPDATE - Update URL
+app.put('/api/urls/:shortCode', async (req, res) => {
+    try {
+        const { shortCode } = req.params;
+        const{ longUrl } = req.body;
+
+        if (!longUrl || !longUrl.startsWith('http')) {
+            return res.status(400).json({ error: 'Valid URL required (must start with http/https'});
+        }
+
+        const result = await pool.query(
+            'UPDATE urls SET long_url = $1 WHERE short_code = $2 RETURNING *',
+            [longUrl, shortCode]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'URL not found' });
+        }
+
+        res.json({
+            id: result.rows[0].id,
+            shortCode: result.rows[0].short_code,
+            longUrl: result.rows[0].long_url,
+            clicks: result.rows[0].clicks
+        });
+
+    } catch (err) {
+        console.error('Error updating URL:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
