@@ -14,8 +14,28 @@ app.use(cors());
 app.use(express.json());
 
 // Health check
-app.get('/health', (req, res)=> {
-    res.json({ status: 'healthy', tier: 'application '});
+app.get('/health', async (req, res)=> {
+    try {
+        // check db connection
+        await pool.query('SELECT 1');
+
+        res.json({
+            status: 'healthy', 
+            tier: 'application',
+            timestamp: new Date().toISOString(),
+            database: 'connected',
+            uptime: process.uptime()
+        });
+    } catch (err) {
+        console.error('Health check failed:', err);
+        res.status(503).json({
+            status: 'unhealthy',
+            tier: 'application',
+            timerstamp: new Date().toISOString(),
+            database: 'disconnected',
+            error: 'Database connection failed'
+        });
+    }
 });
 
 // ====== CRUD ======
@@ -210,3 +230,18 @@ app.get('/:shortCode', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+// start server
+const server = app.listen(PORT, '0.0.0.0', () => {
+    const env = process.env.NODE_ENV || 'development';
+    const hostname = process.env.HOSTNAME || require('os').hostname();
+
+    console.log(`Tier 2 (app layer) running on port ${PORT}`);
+    console.log(`Environment: ${env}`);
+    console.log(`Hostname: ${hostname}`);
+    console.log(`Health check: http://0.0.0.0:${PORT}/health`);
+
+    if (env === 'development') {
+        console.log(`Local access: http://localhost:${PORT}`);
+    }
+}); 
