@@ -245,3 +245,28 @@ const server = app.listen(PORT, '0.0.0.0', () => {
         console.log(`Local access: http://localhost:${PORT}`);
     }
 }); 
+
+// graceful shutdown
+const gracefulShutdown = async (signal) => {
+    console.log(`\n${signal} received. Starting shutdown...`)
+
+    server.close(async () => {
+        console.log('HTTP server closed');
+
+        try {
+            await pool.end();
+            console.log('Database connections closed');
+            process.exit(0);
+        } catch (err) {
+            console.error('Error during shutdown:', err);
+            process.exit(1);
+        }
+    });
+
+    // force shutdown after 10s
+    setTimeout(() => {
+        console.error('Forced shutdown after timeout');
+        process.exit(1);
+
+    }, 10000);
+};
